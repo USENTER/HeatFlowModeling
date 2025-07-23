@@ -31,40 +31,26 @@ materials(4).name = 'Plastic';
 materials(4).IR_emis = 0.95;
 materials(4).h = 12;
 
+% --- Timing analysis ---
+
+fprintf('Running serial computation...\n');
+tic;
+results_serial = computeForMaterials(materials, I_ES_arr, R_solar_arr, Tamb, tau_full, w_step, wavl_arr, false);
+time_serial = toc;
+
+fprintf('Running parallel computation...\n');
+tic;
+results_parallel = computeForMaterials(materials, I_ES_arr, R_solar_arr, Tamb, tau_full, w_step, wavl_arr, true);
+time_parallel = toc;
+
+fprintf('\nElapsed time (serial):   %.3f seconds\n', time_serial);
+fprintf('Elapsed time (parallel): %.3f seconds\n', time_parallel);
+
+% Use parallel results for plotting (they should be the same)
 numMaterials = length(materials);
-results = cell(numMaterials,1);
-
-parfor m = 1:numMaterials
-    mat = materials(m);
-    IR_emis = mat.IR_emis;
-    h = mat.h;
-    detT_arr=zeros(length(I_ES_arr),length(R_solar_arr));
-    for ii=1:length(I_ES_arr)
-        I_ES= I_ES_arr(ii);
-        for jj=1:length(R_solar_arr)
-            R_solar = R_solar_arr(jj);
-            Tobj = Tamb;
-            % below is calculation
-            if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
-                while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
-                    Tobj=Tobj-0.1;
-                end
-            else
-                while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
-                    Tobj=Tobj+0.1;
-                end
-            end
-            detT_arr(ii,jj)=Tamb-Tobj; % record the difference
-        end
-    end
-    results{m}.detT_arr = detT_arr;
-    results{m}.name = mat.name;
-end
-
-%% plot temperature drop versus T_amb for each material
 figure()
 for m = 1:numMaterials
-    detT_arr = results{m}.detT_arr;
+    detT_arr = results_parallel{m}.detT_arr;
     subplot(2,2,m)
     for i = 1:size(detT_arr, 1)
         plot(R_solar_arr, detT_arr(i,:), 'o-', 'LineWidth', 2);
@@ -72,16 +58,73 @@ for m = 1:numMaterials
     end
     xlabel('\rho_{sun}');
     ylabel('Temperature drop, detT [C]')
-    title(['Material: ' results{m}.name])
+    title(['Material: ' results_parallel{m}.name])
     legend(compose('I_{ES}=%d W/m^2', I_ES_arr));
 end
 
 end
 
+function results = computeForMaterials(materials, I_ES_arr, R_solar_arr, Tamb, tau_full, w_step, wavl_arr, useParallel)
+numMaterials = length(materials);
+results = cell(numMaterials,1);
+if useParallel
+    parfor m = 1:numMaterials
+        mat = materials(m);
+        IR_emis = mat.IR_emis;
+        h = mat.h;
+        detT_arr=zeros(length(I_ES_arr),length(R_solar_arr));
+        for ii=1:length(I_ES_arr)
+            I_ES= I_ES_arr(ii);
+            for jj=1:length(R_solar_arr)
+                R_solar = R_solar_arr(jj);
+                Tobj = Tamb;
+                if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj-0.1;
+                    end
+                else
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj+0.1;
+                    end
+                end
+                detT_arr(ii,jj)=Tamb-Tobj;
+            end
+        end
+        results{m}.detT_arr = detT_arr;
+        results{m}.name = mat.name;
+    end
+else
+    for m = 1:numMaterials
+        mat = materials(m);
+        IR_emis = mat.IR_emis;
+        h = mat.h;
+        detT_arr=zeros(length(I_ES_arr),length(R_solar_arr));
+        for ii=1:length(I_ES_arr)
+            I_ES= I_ES_arr(ii);
+            for jj=1:length(R_solar_arr)
+                R_solar = R_solar_arr(jj);
+                Tobj = Tamb;
+                if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj-0.1;
+                    end
+                else
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj+0.1;
+                    end
+                end
+                detT_arr(ii,jj)=Tamb-Tobj;
+            end
+        end
+        results{m}.detT_arr = detT_arr;
+        results{m}.name = mat.name;
+    end
+end
+end
+
 % --- Subfunctions below ---
 
 function y=Ibb(wavl_ARR,T)
-    % spectral hemisphere emissive power of a blackbody
     C1=3.742e8/pi; % C1 unit: W.um^4.m^-2
     C2= 1.439e4;
     y=C1./((wavl_ARR.^5).*(exp(C2./(wavl_ARR.*T))-1));
@@ -102,6 +145,8 @@ end
 function y = Pamb(T, IR_emis, tau_full, w_step, wavl_arr)
     detP=0.01;
     p=0.01:detP:0.99; % p = cos(theta)
+    tau_full = tau_full(:); % ensure column
+    wavl_arr = wavl_arr(:); % ensure column
     t = (1-tau_full.^(1./p)); % size: [numel(wavl_arr), numel(p)]
     Ibb_vals = Ibb(wavl_arr,T); % size: [numel(wavl_arr), 1]
     TempValue = 2*pi*detP*p.*IR_emis.*(w_step*sum(t.*Ibb_vals,1)); % sum over wavl_arr, keep p
