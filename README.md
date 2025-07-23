@@ -7,7 +7,7 @@ The code itself numerically solves a system of differential equations to calcula
 
 Below is a picture of the equations used.
 
-<img width="696" height="321" alt="image" src="https://github.com/user-attachments/assets/1611f37d-bc2d-4cf6-bd90-7e9a3a03b63b" $/>
+<img width="696" height="321" alt="image" src="https://github.com/user-attachments/assets/24528561-5b37-4ec7-9de8-38089072971f" />
 
 ### Explanation ###
 The first three equations define methods of energy flow into the material: solar radiation, conduction and convection, and atmospheric radiation(i.e. the energy flow from the ambient air). The fourth equation defines the heat radiated out by the material. To solve for the stable temperature, the code numerically solves for the point where the energy flow out equals the energy flow in, allowing us to guage how cool the material can stay.
