@@ -45,12 +45,12 @@ parfor m = 1:numMaterials
             R_solar = R_solar_arr(jj);
             Tobj = Tamb;
             % below is calculation
-            if Prad(Tobj, IR_emis) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis)
-                while Prad(Tobj, IR_emis)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis)
+            if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
                     Tobj=Tobj-0.1;
                 end
             else
-                while Prad(Tobj, IR_emis) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis)
+                while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
                     Tobj=Tobj+0.1;
                 end
             end
@@ -76,23 +76,30 @@ for m = 1:numMaterials
     legend(compose('I_{ES}=%d W/m^2', I_ES_arr));
 end
 
-%% DIY functions
-function y=Ibb(wavl_ARR,T) % spectral.
+end
+
+% --- Subfunctions below ---
+
+function y=Ibb(wavl_ARR,T)
     % spectral hemisphere emissive power of a blackbody
     C1=3.742e8/pi; % C1 unit: W.um^4.m^-2
     C2= 1.439e4;
     y=C1./((wavl_ARR.^5).*(exp(C2./(wavl_ARR.*T))-1));
 end
-function y = Prad(Tsample, IR_emis)
+
+function y = Prad(Tsample, IR_emis, w_step, wavl_arr)
     y = pi*w_step*sum(IR_emis*Ibb(wavl_arr,Tsample));
 end
+
 function y = P_cdcv(T_env,T_film,h)
     y = h*(T_env - T_film);
 end
+
 function y = Psun_abs(R_solar,I_ES)
     y = (1-R_solar)*I_ES;
 end
-function y = Pamb(T, IR_emis)
+
+function y = Pamb(T, IR_emis, tau_full, w_step, wavl_arr)
     detP=0.01;
     p=0.01:detP:0.99; % p = cos(theta)
     t = (1-tau_full.^(1./p)); % size: [numel(wavl_arr), numel(p)]
@@ -100,5 +107,4 @@ function y = Pamb(T, IR_emis)
     TempValue = 2*pi*detP*p.*IR_emis.*(w_step*sum(t.*Ibb_vals,1)); % sum over wavl_arr, keep p
     P_amb = sum(TempValue);
     y=P_amb;
-end
 end
