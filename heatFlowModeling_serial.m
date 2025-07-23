@@ -1,4 +1,4 @@
-function heatFlowModeling_parallel
+function heatFlowModeling_serial
 % import data.
 wavl_atm=xlsread('atmosphericIRwindowData.xlsx','A:A');
 t_atm=xlsread('atmosphericIRwindowData.xlsx','B:B');
@@ -14,8 +14,8 @@ Tamb = 30 + 273; % Ambient temperature
 I_ES_arr = [0 200 400 600 800 1000]; % Added other I_ES values to solar array
 R_solar_arr = linspace(0, 1, 20); % Changed to linspace reflectance for the solar 
 
-% Define 10 random example materials
-numMaterials = 10;
+% Define 4 random example materials
+numMaterials = 4;
 materials = struct('name', {}, 'IR_emis', {}, 'h', {});
 for i = 1:numMaterials
     materials(i).name = ['Material' num2str(i)];
@@ -24,7 +24,7 @@ for i = 1:numMaterials
 end
 
 results = cell(numMaterials,1);
-parfor m = 1:numMaterials
+for m = 1:numMaterials
     mat = materials(m);
     IR_emis = mat.IR_emis;
     h = mat.h;
@@ -51,7 +51,7 @@ parfor m = 1:numMaterials
 end
 
 figure()
-rows = 2; cols = 5;
+rows = 2; cols = 2;
 for m = 1:numMaterials
     detT_arr = results{m}.detT_arr;
     subplot(rows,cols,m)
