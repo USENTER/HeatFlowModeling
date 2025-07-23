@@ -14,22 +14,14 @@ Tamb = 30 + 273; % Ambient temperature
 I_ES_arr = [0 200 400 600 800 1000]; % Added other I_ES values to solar array
 R_solar_arr = linspace(0, 1, 20); % Changed to linspace reflectance for the solar 
 
-% Define random example materials
-materials(1).name = 'Aluminum';
-materials(1).IR_emis = 0.05;
-materials(1).h = 15;
-
-materials(2).name = 'Glass';
-materials(2).IR_emis = 0.9;
-materials(2).h = 10;
-
-materials(3).name = 'Ceramic';
-materials(3).IR_emis = 0.7;
-materials(3).h = 8;
-
-materials(4).name = 'Plastic';
-materials(4).IR_emis = 0.95;
-materials(4).h = 12;
+% Define 10 random example materials
+numMaterials = 10;
+materials = struct('name', {}, 'IR_emis', {}, 'h', {});
+for i = 1:numMaterials
+    materials(i).name = ['Material' num2str(i)];
+    materials(i).IR_emis = 0.05 + 0.9*rand(); % random between 0.05 and 0.95
+    materials(i).h = 8 + 12*rand();           % random between 8 and 20
+end
 
 % --- Timing analysis ---
 
@@ -47,18 +39,18 @@ fprintf('\nElapsed time (serial):   %.3f seconds\n', time_serial);
 fprintf('Elapsed time (parallel): %.3f seconds\n', time_parallel);
 
 % Use parallel results for plotting (they should be the same)
-numMaterials = length(materials);
 figure()
+rows = 2; cols = 5;
 for m = 1:numMaterials
     detT_arr = results_parallel{m}.detT_arr;
-    subplot(2,2,m)
+    subplot(rows,cols,m)
     for i = 1:size(detT_arr, 1)
         plot(R_solar_arr, detT_arr(i,:), 'o-', 'LineWidth', 2);
         hold on;
     end
     xlabel('\rho_{sun}');
     ylabel('Temperature drop, detT [C]')
-    title(['Material: ' results_parallel{m}.name])
+    title(materials(m).name)
     legend(compose('I_{ES}=%d W/m^2', I_ES_arr));
 end
 
