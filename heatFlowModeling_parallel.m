@@ -24,30 +24,62 @@ for i = 1:numMaterials
 end
 
 results = cell(numMaterials,1);
-parfor m = 1:numMaterials
-    mat = materials(m);
-    IR_emis = mat.IR_emis;
-    h = mat.h;
-    detT_arr=zeros(length(I_ES_arr),length(R_solar_arr));
-    for ii=1:length(I_ES_arr)
-        I_ES= I_ES_arr(ii);
-        for jj=1:length(R_solar_arr)
-            R_solar = R_solar_arr(jj);
-            Tobj = Tamb;
-            if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
-                while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
-                    Tobj=Tobj-0.1;
+try
+    parfor m = 1:numMaterials
+        mat = materials(m);
+        IR_emis = mat.IR_emis;
+        h = mat.h;
+        detT_arr=zeros(length(I_ES_arr),length(R_solar_arr));
+        for ii=1:length(I_ES_arr)
+            I_ES= I_ES_arr(ii);
+            for jj=1:length(R_solar_arr)
+                R_solar = R_solar_arr(jj);
+                Tobj = Tamb;
+                if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj-0.1;
+                    end
+                else
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj+0.1;
+                    end
                 end
-            else
-                while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
-                    Tobj=Tobj+0.1;
-                end
+                detT_arr(ii,jj)=Tamb-Tobj;
             end
-            detT_arr(ii,jj)=Tamb-Tobj;
         end
+        results{m}.detT_arr = detT_arr;
+        results{m}.name = mat.name;
     end
-    results{m}.detT_arr = detT_arr;
-    results{m}.name = mat.name;
+    fprintf('Parallel execution completed successfully.\n');
+catch ME
+    fprintf('Parallel execution failed: %s\n', ME.message);
+    fprintf('Falling back to serial execution...\n');
+    for m = 1:numMaterials
+        mat = materials(m);
+        IR_emis = mat.IR_emis;
+        h = mat.h;
+        detT_arr=zeros(length(I_ES_arr),length(R_solar_arr));
+        for ii=1:length(I_ES_arr)
+            I_ES= I_ES_arr(ii);
+            for jj=1:length(R_solar_arr)
+                R_solar = R_solar_arr(jj);
+                Tobj = Tamb;
+                if Prad(Tobj, IR_emis, w_step, wavl_arr) > P_cdcv(Tamb,Tobj,h) + Psun_abs(R_solar,I_ES) + Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr)>P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj-0.1;
+                    end
+                else
+                    while Prad(Tobj, IR_emis, w_step, wavl_arr) < P_cdcv(Tamb,Tobj,h)+Psun_abs(R_solar,I_ES)+Pamb(Tamb, IR_emis, tau_full, w_step, wavl_arr)
+                        Tobj=Tobj+0.1;
+                    end
+                end
+                detT_arr(ii,jj)=Tamb-Tobj;
+            end
+        end
+        results{m}.detT_arr = detT_arr;
+        results{m}.name = mat.name;
+    end
+    fprintf('Serial execution completed.\n');
 end
 
 figure()
